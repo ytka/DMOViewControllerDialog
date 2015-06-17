@@ -8,6 +8,8 @@
 
 #import "UIViewController+DMODialog.h"
 
+static NSString* s_defaultCancelTitle;
+static NSString* s_defaultConfirmTitle;
 
 @implementation UIViewController (DMODialog)
 
@@ -19,6 +21,19 @@
         topController = topController.presentedViewController;
     }
     return topController;
+}
+
++ (void)dmo_setDefaultCancelTitle:(NSString*)title {
+    s_defaultCancelTitle = title;
+}
++ (NSString*)dmo_defaultCancelTitle {
+    return s_defaultCancelTitle ? s_defaultCancelTitle : NSLocalizedString(@"Cancel", nil);
+}
++ (void)dmo_setDefaultConfirmTitle:(NSString*)title {
+    s_defaultConfirmTitle = title;
+}
++ (NSString*)dmo_defaultConfirmTitle {
+    return s_defaultConfirmTitle ? s_defaultConfirmTitle : NSLocalizedString(@"Confirm", nil);
 }
 
 
@@ -36,7 +51,7 @@
                                       canelHandler:(void (^)(UIAlertAction *action))cancelHandler {
 
     UIAlertController* alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel",nil)
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[[self class] dmo_defaultCancelTitle]
                                                            style:UIAlertActionStyleDefault
                                                          handler:cancelHandler
                                    ];
@@ -56,10 +71,29 @@
     [self presentViewController:alert animated:YES completion:nil];
 }
 
+- (void)dmo_presentMessageDialogWithTitle:(NSString*)title message:(NSString*)message
+                                  okTitles:(NSArray*)okTitles okHandler:(void (^)(NSUInteger index, UIAlertAction *action))okHandler
+                             canelHandler:(void (^)(UIAlertAction *action))cancelHandler {
+    
+    UIAlertController* alert = [self dmo_baseAlertControllerWithTitle:title message:message canelHandler:cancelHandler];
+    
+    [okTitles enumerateObjectsUsingBlock:^(NSString* title, NSUInteger idx, BOOL *stop) {
+        UIAlertAction *okAction = [UIAlertAction actionWithTitle:title
+                                                           style:UIAlertActionStyleDefault
+                                                         handler:^(UIAlertAction *action) {
+                                                             if (okHandler) {
+                                                                 okHandler(idx, action);
+                                                             }
+                                                         }];
+        [alert addAction:okAction];
+    }];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 
 - (void)dmo_presentConfirmDialogWithTitle:(NSString*)title message:(NSString*)message confirmHandler:(void (^)(UIAlertAction *action))confirmHandler {
     UIAlertController* alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
-    UIAlertAction *confirmAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Confirm", nil)
+    UIAlertAction *confirmAction = [UIAlertAction actionWithTitle:[[self class] dmo_defaultConfirmTitle]
                                                        style:UIAlertActionStyleDefault
                                                      handler:confirmHandler];
     [alert addAction:confirmAction];
@@ -121,7 +155,7 @@
                 destructiveTitle:(NSString*)destructiveTitle destructiveHandler:(void (^)(UIAlertAction *action))destructiveHandler {
     UIAlertController *alertController = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleActionSheet];
 
-    [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"DTCancel",nil) style:UIAlertActionStyleCancel handler:nil]];
+    [alertController addAction:[UIAlertAction actionWithTitle:[[self class] dmo_defaultCancelTitle] style:UIAlertActionStyleCancel handler:nil]];
     [alertController addAction:[UIAlertAction actionWithTitle:destructiveTitle style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
         destructiveHandler(action);
     }]];
@@ -132,7 +166,7 @@
                     otherTitles:(NSArray*)otherTitles othersHandler:(void (^)(NSUInteger index))othersHandler {
     UIAlertController *alertController = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleActionSheet];
 
-    [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"DTCancel",nil) style:UIAlertActionStyleCancel handler:nil]];
+    [alertController addAction:[UIAlertAction actionWithTitle:[[self class] dmo_defaultCancelTitle] style:UIAlertActionStyleCancel handler:nil]];
     [otherTitles enumerateObjectsUsingBlock:^(NSString* title, NSUInteger index, BOOL *stop) {
         [alertController addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
             othersHandler(index);

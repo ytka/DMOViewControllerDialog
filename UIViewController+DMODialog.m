@@ -11,6 +11,33 @@
 static NSString* s_defaultCancelTitle;
 static NSString* s_defaultConfirmTitle;
 
+@interface UIAlertController (DMODialog)
+@end
+@implementation UIAlertController (DMODialog)
+- (void) dmo_addOkTitles:(NSArray*)okTitles okHandler:(void (^)(NSUInteger index, UIAlertAction *action))okHandler
+                     canelHandler:(void (^)(UIAlertAction *action))cancelHandler {
+    
+    [okTitles enumerateObjectsUsingBlock:^(NSString* title, NSUInteger idx, BOOL *stop) {
+        UIAlertAction *okAction = [UIAlertAction actionWithTitle:title
+                                                           style:UIAlertActionStyleDefault
+                                                         handler:^(UIAlertAction *action) {
+                                                             if (okHandler) {
+                                                                 okHandler(idx, action);
+                                                             }
+                                                         }];
+        [self addAction:okAction];
+    }];
+    
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[[self class] dmo_defaultCancelTitle]
+                                                           style:UIAlertActionStyleDefault
+                                                         handler:cancelHandler
+                                   ];
+    [self addAction:cancelAction];
+}
+@end
+
+
+
 @implementation UIViewController (DMODialog)
 
 
@@ -46,28 +73,20 @@ static NSString* s_defaultConfirmTitle;
     [[self dmo_topController] dmo_presentErrorDialog:error];
 }
 
-
-- (UIAlertController*)dmo_baseAlertControllerWithTitle:(NSString*)title message:(NSString*)message
-                                      canelHandler:(void (^)(UIAlertAction *action))cancelHandler {
-
-    UIAlertController* alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:[[self class] dmo_defaultCancelTitle]
-                                                           style:UIAlertActionStyleDefault
-                                                         handler:cancelHandler
-                                   ];
-    [alert addAction:cancelAction];
-    return alert;
+- (UIAlertController*)dmo_baseAlertControllerWithTitle:(NSString*)title message:(NSString*)message {
+    return [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
 }
+
 
 - (void)dmo_presentMessageDialogWithTitle:(NSString*)title message:(NSString*)message
                                okTitle:(NSString*)okTitle okHandler:(void (^)(UIAlertAction *action))okHandler
                           canelHandler:(void (^)(UIAlertAction *action))cancelHandler {
-
-    UIAlertController* alert = [self dmo_baseAlertControllerWithTitle:title message:message canelHandler:cancelHandler];
-    UIAlertAction *okAction = [UIAlertAction actionWithTitle:okTitle
-                                                       style:UIAlertActionStyleDefault
-                                                     handler:okHandler];
-    [alert addAction:okAction];
+    UIAlertController* alert = [self dmo_baseAlertControllerWithTitle:title message:message];
+    [alert dmo_addOkTitles:@[okTitle] okHandler:^(NSUInteger index, UIAlertAction *action) {
+        okHandler(action);
+    } canelHandler:^(UIAlertAction *action) {
+        cancelHandler(action);
+    }];
     [self presentViewController:alert animated:YES completion:nil];
 }
 
@@ -75,17 +94,15 @@ static NSString* s_defaultConfirmTitle;
                                   okTitles:(NSArray*)okTitles okHandler:(void (^)(NSUInteger index, UIAlertAction *action))okHandler
                              canelHandler:(void (^)(UIAlertAction *action))cancelHandler {
     
-    UIAlertController* alert = [self dmo_baseAlertControllerWithTitle:title message:message canelHandler:cancelHandler];
-    
-    [okTitles enumerateObjectsUsingBlock:^(NSString* title, NSUInteger idx, BOOL *stop) {
-        UIAlertAction *okAction = [UIAlertAction actionWithTitle:title
-                                                           style:UIAlertActionStyleDefault
-                                                         handler:^(UIAlertAction *action) {
-                                                             if (okHandler) {
-                                                                 okHandler(idx, action);
-                                                             }
-                                                         }];
-        [alert addAction:okAction];
+    UIAlertController* alert = [self dmo_baseAlertControllerWithTitle:title message:message];
+    [alert dmo_addOkTitles:okTitles okHandler:^(NSUInteger index, UIAlertAction *action) {
+        if (okHandler) {
+            okHandler(index,action);
+        }
+    } canelHandler:^(UIAlertAction *action) {
+        if (cancelHandler) {
+            cancelHandler(action);
+        }
     }];
     [self presentViewController:alert animated:YES completion:nil];
 }
@@ -135,17 +152,13 @@ static NSString* s_defaultConfirmTitle;
                             canelHandler:(void (^)(UIAlertAction *action))cancelHandler
            textFieldConfigurationHandler:(void (^)(UITextField *textField))textFieldConfigurationHandler {
 
-    UIAlertController* alert = [self dmo_baseAlertControllerWithTitle:title message:message canelHandler:cancelHandler];
+    UIAlertController* alert = [self dmo_baseAlertControllerWithTitle:title message:message];
     [alert addTextFieldWithConfigurationHandler:textFieldConfigurationHandler];
-
-    UIAlertAction *okAction = [UIAlertAction actionWithTitle:okTitle
-                                                       style:UIAlertActionStyleDefault
-                                                     handler:^(UIAlertAction* action) {
-                                                         okHandler(action, alert.textFields.firstObject);
-                                                     }
-                               ];
-    [alert addAction:okAction];
-
+    [alert dmo_addOkTitles:@[okTitle] okHandler:^(NSUInteger index, UIAlertAction *action) {
+        okHandler(action, alert.textFields.firstObject);
+    } canelHandler:^(UIAlertAction *action) {
+        cancelHandler(action);
+    }];
     [self presentViewController:alert animated:YES completion:nil];
 }
 
